@@ -1,10 +1,45 @@
 language: c
-compiler:
-  - gcc
-  - clang
-install: sudo apt-get install check
-script: make test
+
+# build with gcc-7, and clang-7
+# from https://docs.travis-ci.com/user/languages/cpp/#gcc-on-linux
+matrix:
+  include:
+    - os: linux
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - gcc-8
+            - lcov
+      env:
+        # enable coverage only for gcc.
+        - MATRIX_EVAL="CC=gcc-8 LCOV=lcov"
+    - os: linux
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+            - llvm-toolchain-trusty-7
+          packages:
+            - clang-7
+      env:
+        - MATRIX_EVAL="MINMEA_ASAN=1 CC=clang-7"
+    # TODO: test old compiler versions
+    # - os: linux
+    #   compiler:
+    #     - gcc
+    #     - clang
+before_install:
+    - eval "${MATRIX_EVAL}"
+install:
+  - sudo apt-get install check
+  - pip install --user cpp-coveralls
+script: MINMEA_COVERAGE=1 make test
 notifications:
   email:
     on_success: change
     on_failure: change
+after_success:
+  # upload to coveralls
+  - coveralls -n -i ./ -e example.c
